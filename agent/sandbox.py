@@ -74,18 +74,29 @@ def execute_file(file):
     _, ext = os.path.splitext(file)
 
     if ext.lower() == '.py':
-        # 调用CMD执行Python程序并传入临时文件路径
-        result = subprocess.run(
-            ['python', file],  # 假设Python解释器在系统环境变量PATH中
-            capture_output=True,           # 捕获标准输出和标准错误
-            text=True,                     # 返回str而不是bytes
-            check=True                     # 如果子进程退出时返回非零值，则抛出CalledProcessError
-        )
+        try:
+            # 调用CMD执行Python程序并传入临时文件路径
+            result = subprocess.run(
+                ['python', file],  # 假设Python解释器在系统环境变量PATH中
+                capture_output=True,           # 捕获标准输出和标准错误
+                text=True,                     # 返回str而不是bytes
+                check=True                     # 如果子进程退出时返回非零值，则抛出CalledProcessError
+            )
 
-        # 打印标准输出
-        print("Standard output:", result.stdout)
-        # 如果有错误信息，打印标准错误
-        if result.stderr:
-            print("Standard error:", result.stderr)
-        
-        return result
+            # 打印标准输出
+            print("Standard output:", result.stdout)
+            # 如果有错误信息，打印标准错误
+            if result.stderr:
+                print("Standard error:", result.stderr)
+                return False, result.stderr
+            else:
+                return True, result
+            
+        except subprocess.CalledProcessError as e:
+            print(f"Command failed with return code {e.returncode}")
+            print("Output from the command:")
+            print(e.stdout)
+            print("Error output from the command:")
+            print(e.stderr)
+            return False, e.stderr
+            

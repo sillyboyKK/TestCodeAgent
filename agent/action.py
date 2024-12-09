@@ -16,51 +16,61 @@ def analyze_project():
 
 
 # 创建文件
-def create_file(proj_tree:str, input_file:str=None, output_file:str=None, content:str=None):
+def create_file(proj_tree:str, input_file:str=None, output_file:str=None, content:str=None, feedback:str="无", forward:str=""):
     
     if not (output_file and content):
-        return "缺乏输入，执行失败"
+        return False, "缺乏输入，执行失败"
     
-    codeGenerator = CodeAgent()
-    codeGenerator_input = CREATE_CODE_GENERATOR_PROMPT.format(content, proj_tree)
+    try:
+        codeGenerator = CodeAgent()
+        codeGenerator_input = CREATE_CODE_GENERATOR_PROMPT.format(content, proj_tree, forward, feedback)
 
-    res =codeGenerator.generate_code(codeGenerator_input)
-    res_code = extract_markdown_code_blocks(res)
+        res =codeGenerator.generate_code(codeGenerator_input)
+        res_code = extract_markdown_code_blocks(res)
 
-    output_file = "./"+output_file
-    if not os.path.exists(os.path.dirname(output_file)):
-        print(f"不存在{output_file}，已创建")
-        os.mkdir(output_file)
+        output_file = "./"+output_file
+        if not os.path.exists(os.path.dirname(output_file)):
+            print(f"不存在{os.path.dirname(output_file)}，已创建")
+            os.mkdir(os.path.dirname(output_file))
 
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(res_code) 
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(res_code) 
     
-    return "完成改写"
+        return True, f"完成创建文件{output_file}"
+    
+    except Exception as e:
+        return False, f"运行存在错误:{e}"
 
 
 # 改写文件
-def rewrite_file(proj_tree:str, input_file:str=None, output_file:str=None, content:str=None):
+def rewrite_file(proj_tree:str, input_file:str=None, output_file:str=None, content:str=None, feedback:str="无", forward:str=""):
     if not (input_file and output_file and content):
-        return "缺乏输入，执行失败"
+        return False, "缺乏输入，执行失败"
 
-    with open("./"+input_file, 'r', encoding='utf-8') as f:
-        old_text = f.read()
+    try:
+        input_file = "./"+input_file
+        with open(input_file, 'r', encoding='utf-8') as f:
+            old_text = f.read()
+        
+        codeGenerator = CodeAgent()
+        codeGenerator_input = RWRITE_CODE_GENERATOR_PROMPT.format(content, proj_tree, input_file, old_text, forward, feedback)
+
+        res =codeGenerator.generate_code(codeGenerator_input)
+        res_code = extract_markdown_code_blocks(res)
+
+        output_file = "./"+output_file
+        if not os.path.exists(os.path.dirname(output_file)):
+            print(f"不存在{output_file}，已创建")
+            os.mkdir(output_file)
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(res_code) 
+        
+        return True, f"完成改写{input_file}为{output_file}"
     
-    codeGenerator = CodeAgent()
-    codeGenerator_input = RWRITE_CODE_GENERATOR_PROMPT.format(content, proj_tree, input_file, old_text)
+    except Exception as e:
+        return False, f"运行存在错误:{e}"
 
-    res =codeGenerator.generate_code(codeGenerator_input)
-    res_code = extract_markdown_code_blocks(res)
-
-    output_file = "./"+output_file
-    if not os.path.exists(os.path.dirname(output_file)):
-        print(f"不存在{output_file}，已创建")
-        os.mkdir(output_file)
-
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(res_code) 
-    
-    return "完成改写"
 
 
 # 读取文件
@@ -68,14 +78,24 @@ def read_file():
     pass
 
 
+# 安装环境
+def install_env():
+    pass
+
+
 # 执行debug项目
-def debug_project(proj_tree:str, file:str=None):
+def debug_project(proj_tree:str, file:str=None, feedback:str="", forward:str=""):
     print("已执行")
     """
     执行的内容
     """
-    res = execute_file(file)
-    return res, "已执行"
+    flag, res = execute_file(file)
+    return flag, f"{file}执行的结果为：{res}"
+
+
+# 出错处理，生成新的action序列
+def debug_Error_handle():
+    pass
 
 
 functions_dict = {
@@ -87,9 +107,11 @@ functions_dict = {
 
 
 # 选择合适action执行的地方
-def execute_action(proj_tree, action, functions=functions_dict):
+def execute_action(proj_tree, action, functions=functions_dict, feedback:str="无", forward:str=""):
     action_name = action.get("actionName")
     params = action.get("parm", {})
+    params["feedback"] = feedback
+    params["forward"] = forward
     
     # 查找与actionName匹配的函数
     func = functions.get(action_name)
